@@ -2396,7 +2396,7 @@ class DatabasesWindow:
         def delete_dat(CB, stext, parent):
 
             def rewrite_file(folder=os.path.join('data', 'facility')):
-                self.bdata.to_csv(os.path.join(os.path.join('data','facility'),'beta.csv'), columns=['channel_name', 'm_datetime', 'datetime','position', 'beta', 'unc_beta'], header=['channel_name', 'mdatetime', 'datetime','position', 'beta', 'unc_beta'], index=False)
+                self.bdata.to_csv(os.path.join(os.path.join('data','facility'),'beta.csv'), columns=['channel_name', 'm_datetime', 'datetime','position', 'beta', 'unc_beta'], header=['channel_name', 'mdatetime', 'datetime','position', 'beta', 'unc_beta'], index=False, date_format="%d/%m/%Y %H:%M:%S")
 
             if CB.get() != '':
                 prov_data = self.bdata[self.bdata['channel_name'] == CB.get()]
