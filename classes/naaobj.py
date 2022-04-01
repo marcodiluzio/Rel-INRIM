@@ -14,6 +14,7 @@ import csv
 import os
 import xlsxwriter
 from xlsxwriter.utility import xl_rowcol_to_cell
+import openpyxl
 
 class Spectrum:
     """define a spectrum with all attached information."""
@@ -2029,7 +2030,7 @@ class ExcelOutput:
         ws.write(0, 8, 'calibration name')
         ws.write(0, 10, 'detector')
         ws.write(0, 11, 'd ref / mm')
-        ws.write(0, 13, 'Rel-INRIM version: 1.0')
+        ws.write(0, 13, 'Rel-INRIM version: 1.1')
         ws.write(1, 13, f'database version: {NAA.settings_dict["database"]}')
         ws.write(1, 0, NAA.irradiation.datetime, self.font_dateandtime)
         ws.write(1, 2, NAA.irradiation.irradiation_time)
@@ -2084,7 +2085,7 @@ class ExcelOutput:
         ws.write(0, 8, 'calibration name')
         ws.write(0, 10, 'detector')
         ws.write(0, 11, 'd ref / mm')
-        ws.write(0, 13, 'Rel-INRIM version: 1.0')
+        ws.write(0, 13, 'Rel-INRIM version: 1.1')
         ws.write(1, 13, f'database version: {NAA.settings_dict["database"]}')
         ws.write(1, 0, NAA.irradiation.datetime, self.font_dateandtime)
         ws.write(1, 2, NAA.irradiation.irradiation_time)
@@ -2805,6 +2806,502 @@ class ExcelOutput:
         w_bud.write(0, 0, 'This complex activation decay is not implemented yet')
         w_bud.write(1, 0, '')
 
+
+class TotalBudgetExcelOutput:
+    def __init__(self, budgets, filename, progressbar):
+        progressbar['value'] = 0
+        progressbar['maximum'] = 4
+        progressbar.update()
+        wb = xlsxwriter.Workbook(filename, {'nan_inf_to_errors': True})
+        self.font_bold = wb.add_format({'bold': True})
+        self.font_ital = wb.add_format({'italic': True})
+        self.font_result = wb.add_format(
+            {'bold': True, 'font_color': 'green', 'num_format': '0.00E+00'})
+        self.font_uncresult = wb.add_format(
+            {'bold': True, 'font_color': 'green', 'num_format': '0.0E+00'})
+        self.font_pct = wb.add_format({'num_format': 0x0a})
+        self.font_DL = wb.add_format(
+            {'bold': True, 'font_color': '#FF6347', 'num_format': '0.0E+00'})
+        self.font_zscore = wb.add_format(
+            {'bold': True, 'font_color': '#2A2CC9', 'num_format': '0.0'})
+        self.font_sups = wb.add_format({'font_script': 1})
+        self.font_subs = wb.add_format({'font_script': 2})
+        self.font_gray = wb.add_format({'font_color': 'gray'})
+        self.font_grayit = wb.add_format({'italic': True, 'font_color': 'gray'})
+        self.font_graysub = wb.add_format({'font_script': 2, 'font_color': 'gray'})
+        self.font_graypct = wb.add_format({'num_format': 0x0a, 'font_color': 'gray'})
+        self.font_dateandtime = wb.add_format({'num_format': 'dd/mm/yyyy hh:mm'})
+        self.grey_header = wb.add_format({'bg_color': '#e7e6e6', 'font_color': 'black', 'bold': True})
+        self.grey_info = wb.add_format({'bg_color': '#e7e6e6', 'font_color': 'black', 'italic': True, 'left': 3})
+        self.grey_fill = wb.add_format({'bg_color': '#e7e6e6', 'font_color': 'black'})
+        try:
+            self.font_sym = wb.add_format({'font_name': 'Symbol'})
+            self.font_graysym = wb.add_format({'font_name': 'Symbol', 'font_color': 'gray'})
+        except:
+            self.font_sym = wb.add_format({'font_name': 'Times New Roman'})
+            self.font_graysym = wb.add_format(
+                {'font_name': 'Times New Roman', 'font_color': 'gray'})
+
+        ws = wb.add_worksheet('Input data')
+        self._input_data(ws, budgets)
+        progressbar['value'] += 1
+        progressbar.update()
+
+        average, par_stk, corr_stk, dev_par_stk, dev_corr_stk = self.averages(budgets)
+        progressbar['value'] += 1
+        progressbar.update()
+
+        ws = wb.add_worksheet('Total uncertainty budget')
+        self._total_budget(ws, average, par_stk, corr_stk, dev_par_stk, dev_corr_stk)
+        progressbar['value'] += 1
+        progressbar.update()
+        wb.close()
+        progressbar['value'] += 1
+        progressbar.update()
+        #text
+
+    def averages(self, budgets):
+        sample_names = sorted(set([item.name for item in budgets]))
+        first_level_stack = []
+        first_corr_stack = []
+        averages = []
+        for name in sample_names:
+            first_level_stack.append(np.mean(np.stack([item.params for item in budgets if item.name==name], axis=-1, out=None), axis=1))
+            first_corr_stack.append(np.mean(np.stack([item.corr_params for item in budgets if item.name==name], axis=-1, out=None), axis=1))
+            averages.append([item.value for item in budgets if item.name==name])
+        first_level_stack = np.stack([item for item in first_level_stack], axis=-1, out=None)
+        first_corr_stack = np.stack([item for item in first_corr_stack], axis=-1, out=None)
+
+        nsample = first_level_stack.shape[1]
+        dev_par_stk = np.std(first_level_stack, axis=1)
+        par_stk = np.mean(first_level_stack, axis=1)
+        par_stk[1] = par_stk[1] / nsample
+        par_stk[9] = par_stk[9] / nsample
+
+        dev_corr_stk = np.std(first_corr_stack, axis=1)
+        corr_stk = np.mean(first_corr_stack, axis=1)
+        averages = [np.mean(sets) for sets in averages]
+        average = np.mean(averages)
+
+        return average, par_stk, corr_stk, dev_par_stk, dev_corr_stk
+
+    def _input_data(self, ws, budgets):
+        ws.set_column('A:A', 22)
+        ws.set_column('F:H', 12)
+
+        r = 0
+        ws.write(r, 0, 'Target element')
+        ws.write(r, 1, budgets[0].target, self.font_bold)
+        ws.write(r, 2, 'Emitter')
+        ws.write(r, 3, budgets[0].emitter, self.font_bold)
+        ws.write(r, 4, 'Ep / keV')
+        ws.write(r, 5, budgets[0].energy, self.font_bold)
+
+        r += 1
+        r += 1
+        ws.write(r, 0, 'budgets path', self.font_bold)
+        ws.write(r, 1, 'sample id', self.font_bold)
+        ws.write_rich_string(r, 2, self.font_ital, 'w', ' / g g', self.font_sups, '-1')
+        ws.write_rich_string(r, 3, self.font_ital, 'u','(', self.font_ital, 'w',') / g g', self.font_sups, '-1')
+        ws.write_rich_string(r, 4, self.font_ital, 'u', self.font_subs, 'r', '(', self.font_ital, 'w', ') / 1')
+        ws.write(r, 5, 'statistics', self.font_bold)
+        ws.write(r, 6, 'positioning', self.font_bold)
+        ws.write(r, 7, 'other', self.font_bold)
+
+        r += 1
+        init = r
+        for item in budgets:
+            ws.write(r, 0, item.filename)
+            ws.write(r, 1, item.name)
+            ws.write(r, 2, item.value, self.font_result)
+            ws.write(r, 3, item.unc(), self.font_uncresult)
+            fml = f'=IFERROR(ABS(D{r+1}/C{r+1}),"-")'
+            ws.write(r, 4, fml, self.font_pct)
+
+            ws.write(r, 5, item.stats())
+            ws.write(r, 6, item.positioning())
+            ws.write(r, 7, item.other())
+
+            r += 1
+
+        ws.conditional_format(f'F{init+1}:H{init+1+len(budgets)}', {'type': 'data_bar', 'bar_color': 'red', 'bar_only':True, 'bar_border_color':'black'})
+
+    def _total_budget(self, ws, average, par_stk, corr_stk, dev_par_stk, dev_corr_stk):
+        r = 0
+        ws.write(r, 0, 'Quantity')
+        ws.write(r, 2, 'Unit')
+        ws.write(r, 3, 'Variance')
+        ws.write(r, 4, 'Std dev var')
+        ws.write(r, 5, 'DoF')
+        ws.write(r, 6, 'eDoF')
+        ws.write(r, 7, 'Contribution to variance')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'X', self.font_subs, 'i')
+        ws.write_rich_string(r, 2, '[', self.font_ital, 'X', self.font_subs, 'i', ']')
+        ws.write_rich_string(r, 3, self.font_ital, 'u', self.font_subs, 'i', self.font_sups, '2', '(', self.font_ital, 'y', ')')
+        ws.write_rich_string(r, 4, self.font_ital, 's u', self.font_subs, 'i', self.font_sups, '2', '(', self.font_ital, 'y', ')')
+        ws.write_rich_string(r, 5, self.font_sym, 'n', self.font_subs, 'i')
+        ws.write_rich_string(r, 6, self.font_ital, 'u', self.font_subs, 'i', self.font_sups, '4', '(', self.font_ital, 'y', ') / ', self.font_sym, 'n', self.font_subs, 'i')
+        ws.write_rich_string(r, 7, self.font_ital, 'I', ' / %')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 't', self.font_subs, 'i')
+        ws.write(r, 2, 's')
+        for nn, item in enumerate(par_stk):
+            ws.write(r+nn, 3, item)
+            ws.write(r+nn, 4, dev_par_stk[nn])
+            ws.write(r+nn, 5, self.string_dof(r+nn))
+            fml = f'=D{r+nn+1}^2/F{r+nn+1}'
+            ws.write(r+nn, 6, fml)
+            fml = f'=D{r+nn+1}/E43^2'
+            ws.write(r+nn, 7, fml, self.font_pct)
+
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'n', self.font_subs, 'p a')
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'D', self.font_ital, 't', self.font_subs, 'd')
+        ws.write(r, 2, 's')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 't', self.font_subs, 'c a')
+        ws.write(r, 2, 's')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 't', self.font_subs, 'l a')
+        ws.write(r, 2, 's')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'm', self.font_subs, 'sm')
+        ws.write(r, 2, 'g')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'h', self.font_subs, 'sm')
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'G', self.font_subs, 'th a')
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'G', self.font_subs, 'e a')
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'n', self.font_subs, 'p m')
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 't', self.font_subs, 'd m')
+        ws.write(r, 2, 's')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 't', self.font_subs, 'c m')
+        ws.write(r, 2, 's')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 't', self.font_subs, 'l m')
+        ws.write(r, 2, 's')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'm', self.font_subs, 'std')
+        ws.write(r, 2, 'g')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'h', self.font_subs, 'std')
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'w', self.font_subs, 'm')
+        ws.write_rich_string(r, 2, 'g g', self.font_sups, '-1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'G', self.font_subs, 'th m')
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'G', self.font_subs, 'e m')
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write(r, 0, 'f', self.font_ital)
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write(r, 0, 'a', self.font_sym)
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'D', self.font_ital, 'd', self.font_subs, 'a')
+        ws.write(r, 2, 'mm')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'n', self.font_subs, 'a')
+        ws.write_rich_string(r, 2, 'mm', self.font_sups, '2', ' g', self.font_sups, '-2')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'h', self.font_subs, 'a')
+        ws.write(r, 2, 'mm')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'r', self.font_subs, 'a')
+        ws.write_rich_string(r, 2, 'g mm', self.font_sups,'-3')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'D', self.font_ital, 'd', self.font_subs, 'm')
+        ws.write(r, 2, 'mm')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'n', self.font_subs, 'm')
+        ws.write_rich_string(r, 2, 'mm', self.font_sups, '2', ' g', self.font_sups, '-2')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'h', self.font_subs, 'm')
+        ws.write(r, 2, 'mm')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'r', self.font_subs, 'm')
+        ws.write_rich_string(r, 2, 'g mm', self.font_sups,'-3')
+        r += 1
+        ws.write(r, 0, 'b', self.font_sym)
+        ws.write_rich_string(r, 2, 'mm', self.font_sups,'-1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'D', self.font_subs, 'l')
+        ws.write(r, 2, 'mm')
+        r += 1
+        ws.write(r, 0, 'm', self.font_sym)
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'w', self.font_subs, 'a blank')
+        ws.write_rich_string(r, 2, 'g g', self.font_sups, '-1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'm', self.font_subs, 'blank')
+        ws.write(r, 2, 'g')
+        r += 1
+        ws.write(r, 0, 'l', self.font_sym)
+        ws.write_rich_string(r, 2, self.font_ital, 's', self.font_sups, '-1')
+        fml = '=D54+D55'
+        ws.write(r, 3, fml)
+        ws.write(r, 5, self.string_dof(r))
+        fml = f'=D{r+1}^2/F{r+1}'
+        ws.write(r, 6, fml)
+        fml = f'=D{r+1}/E43^2'
+        ws.write(r, 7, fml, self.font_pct)
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'Q', self.font_subs, '0')
+        ws.write(r, 2, '1')
+        fml = '=D56+D57'
+        ws.write(r, 3, fml)
+        ws.write(r, 5, self.string_dof(r))
+        fml = f'=D{r+1}^2/F{r+1}'
+        ws.write(r, 6, fml)
+        fml = f'=D{r+1}/E43^2'
+        ws.write(r, 7, fml, self.font_pct)
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'E', self.font_subs, 'r')
+        ws.write(r, 2, 'eV')
+        fml = '=D58+D59'
+        ws.write(r, 3, fml)
+        ws.write(r, 5, self.string_dof(r))
+        fml = f'=D{r+1}^2/F{r+1}'
+        ws.write(r, 6, fml)
+        fml = f'=D{r+1}/E43^2'
+        ws.write(r, 7, fml, self.font_pct)
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, "d'", self.font_subs, '0')
+        ws.write(r, 2, 'mm')
+        fml = '=D60+D61'
+        ws.write(r, 3, fml)
+        ws.write(r, 5, self.string_dof(r))
+        fml = f'=D{r+1}^2/F{r+1}'
+        ws.write(r, 6, fml)
+        fml = f'=D{r+1}/E43^2'
+        ws.write(r, 7, fml, self.font_pct)
+
+        r += 2
+        ws.write(r, 0, 'Quantity')
+        ws.write(r, 2, 'Unit')
+        ws.write(r, 3, 'Value')
+        ws.write(r, 4, 'Std unc')
+        ws.write(r, 5, 'Rel unc')
+        ws.write(r, 7, 'Contribution to variance')
+        r += 1
+        ws.write(r, 0, 'Y', self.font_ital)
+        ws.write_rich_string(r, 2, '[', self.font_ital, 'Y', ']')
+        ws.write(r, 3, 'y', self.font_ital)
+        ws.write_rich_string(r, 4, self.font_ital, 'u', '(', self.font_ital, 'y', ')')
+        ws.write_rich_string(r, 5, self.font_ital, 'u', self.font_subs, 'r', '(', self.font_ital, 'y', ')')
+        ws.write_rich_string(r, 7, self.font_ital, 'I', ' / %')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'w', self.font_subs, 'a')
+        ws.write_rich_string(r, 2, 'g g', self.font_sups, '-1')
+        ws.write(r, 3, average, self.font_result)
+        fml = '=SQRT(SUM(D3:D39))'
+        ws.write(r, 4, fml, self.font_uncresult)
+        fml = f'=IFERROR(ABS(E{r+1}/D{r+1}),"-")'
+        ws.write(r, 5, fml, self.font_pct)
+        fml = '=SUM(H3:H39)'
+        ws.write(r, 7, fml, self.font_pct)
+        r += 2
+        ws.write(r, 2, 'DoF')
+        ws.write_rich_string(r, 3, self.font_sym, 'n', '(', self.font_ital, 'y', ')')
+        fml = '=INT(E43^4/SUM(G3:G39))'
+        ws.write(r, 4, fml)
+        r += 1
+        ws.write(r, 2, 'Conf level')
+        ws.write_rich_string(r, 3, self.font_ital, 'p', ' / %')
+        ws.write(r, 4, 0.95, self.font_pct)
+        r += 1
+        ws.write(r, 2, 'Cov fact')
+        ws.write(r, 3, 'k', self.font_ital)
+        fml = '=TINV(1-E46,E45)'
+        ws.write(r, 4, fml)
+        r += 1
+        ws.write(r, 2, 'Exp unc')
+        ws.write(r, 3, 'U', self.font_ital)
+        fml = '=E43 * E47'
+        ws.write(r, 4, fml, self.font_uncresult)
+        r += 3
+        ws.write(r, 0, 'Correlated input quantities')
+        r += 1
+        ws.write(r, 0, 'Quantity')
+        ws.write(r, 2, 'Unit')
+        ws.write(r, 3, 'Variance')
+        ws.write(r, 4, 'Std dev var')
+        ws.write(r, 5, 'DoF')
+        ws.write(r, 6, 'eDoF')
+        ws.write(r, 7, 'Contribution to variance')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'X', self.font_subs, 'i')
+        ws.write_rich_string(r, 2, '[', self.font_ital, 'X', self.font_subs, 'i', ']')
+        ws.write_rich_string(r, 3, self.font_ital, 'u', self.font_subs, 'i', self.font_sups, '2', '(', self.font_ital, 'y', ')')
+        ws.write_rich_string(r, 4, self.font_ital, 's u', self.font_subs, 'i', self.font_sups, '2', '(', self.font_ital, 'y', ')')
+        ws.write_rich_string(r, 5, self.font_sym, 'n', self.font_subs, 'i')
+        ws.write_rich_string(r, 6, self.font_ital, 'u', self.font_subs, 'i', self.font_sups, '4', '(', self.font_ital, 'y', ') / ', self.font_sym, 'n', self.font_subs, 'i')
+        ws.write_rich_string(r, 7, self.font_ital, 'I', ' / %')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'l', self.font_subs, 'a')
+        ws.write_rich_string(r, 2, 's', self.font_sups, '-1')
+        for nn, item in enumerate(corr_stk):
+            ws.write(r+nn, 3, item)
+            ws.write(r+nn, 4, dev_corr_stk[nn])
+            ws.write(r+nn, 5, self.string_dof(r+nn))
+            fml = f'=D{r+nn+1}^2/F{r+nn+1}'
+            ws.write(r+nn, 6, fml)
+            fml = f'=D{r+nn+1}/E43^2'
+            ws.write(r+nn, 7, fml, self.font_pct)
+
+        r += 1
+        ws.write_rich_string(r, 0, self.font_sym, 'l', self.font_subs, 'm')
+        ws.write_rich_string(r, 2, 's', self.font_sups, '-1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'Q', self.font_subs, '0 a')
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'Q', self.font_subs, '0 m')
+        ws.write(r, 2, '1')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'E', self.font_subs, 'r a')
+        ws.write(r, 2, 'eV')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, 'E', self.font_subs, 'r m')
+        ws.write(r, 2, 'eV')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, "d'", self.font_subs, '0 a')
+        ws.write(r, 2, 'mm')
+        r += 1
+        ws.write_rich_string(r, 0, self.font_ital, "d'", self.font_subs, '0 m')
+        ws.write(r, 2, 'mm')
+
+    def string_dof(self, n):
+        if n in (8, 9, 10, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 33, 36, 37, 38):
+            return 15
+        return 30
+
+
+class DataBudget:
+	
+	counter = 0
+	
+	def __init__(self, wb, sheet, filepath):
+		self.params, self.corr_params, self.value = self._get_data(wb, sheet)
+		self.filename = filepath
+		self.spectrum, self.target, self.emitter, self.energy = self.des_sheet(sheet)
+		DataBudget.counter += 1
+		self.name = f'{DataBudget.counter}'
+		
+	def des_sheet(self, sheet):
+		rest, energy = sheet.split()
+		n, target, emitter = rest.split('_')
+		return n, target, emitter, energy
+
+	def fname(self):
+		return os.path.split(self.filename)[-1]
+		
+	def _get_data(self, wb, sheet):
+		ws = wb[sheet]
+		params = []
+		corr_params = []
+		try:
+			var = np.power(ws.cell(row=55, column=5).value, 2)
+		except TypeError:
+			return None, None, None
+		params.append(ws.cell(row=5, column=10).value * var)
+		params.append(ws.cell(row=6, column=10).value * var)
+		params.append(ws.cell(row=8, column=10).value * var)
+		params.append(ws.cell(row=9, column=10).value * var)
+		params.append(ws.cell(row=10, column=10).value * var)
+		params.append(ws.cell(row=12, column=10).value * var)
+		params.append(ws.cell(row=13, column=10).value * var)
+		params.append(ws.cell(row=15, column=10).value * var)
+		params.append(ws.cell(row=16, column=10).value * var)
+		params.append(ws.cell(row=19, column=10).value * var)
+		params.append(ws.cell(row=21, column=10).value * var)
+		params.append(ws.cell(row=22, column=10).value * var)
+		params.append(ws.cell(row=23, column=10).value * var)
+		params.append(ws.cell(row=25, column=10).value * var)
+		params.append(ws.cell(row=26, column=10).value * var)
+		params.append(ws.cell(row=27, column=10).value * var)
+		params.append(ws.cell(row=29, column=10).value * var)
+		params.append(ws.cell(row=30, column=10).value * var)
+		params.append(ws.cell(row=33, column=10).value * var)
+		params.append(ws.cell(row=34, column=10).value * var)
+		params.append(ws.cell(row=38, column=10).value * var)
+		params.append(ws.cell(row=39, column=10).value * var)
+		params.append(ws.cell(row=40, column=10).value * var)
+		params.append(ws.cell(row=41, column=10).value * var)
+		params.append(ws.cell(row=43, column=10).value * var)
+		params.append(ws.cell(row=44, column=10).value * var)
+		params.append(ws.cell(row=45, column=10).value * var)
+		params.append(ws.cell(row=46, column=10).value * var)
+		params.append(ws.cell(row=47, column=10).value * var)
+		params.append(ws.cell(row=48, column=10).value * var)
+		params.append(ws.cell(row=49, column=10).value * var)
+		params.append(ws.cell(row=50, column=10).value * var)
+		params.append(ws.cell(row=51, column=10).value * var)
+		
+		corr_params.append(ws.cell(row=7, column=10).value * var)
+		corr_params.append(ws.cell(row=20, column=10).value * var)
+		corr_params.append(ws.cell(row=17, column=10).value * var)
+		corr_params.append(ws.cell(row=31, column=10).value * var)
+		corr_params.append(ws.cell(row=18, column=10).value * var)
+		corr_params.append(ws.cell(row=32, column=10).value * var)
+		corr_params.append(ws.cell(row=37, column=10).value * var)
+		corr_params.append(ws.cell(row=42, column=10).value * var)
+		
+		value = ws.cell(row=55, column=4).value
+		return np.array(params), np.array(corr_params), value
+		
+	def var(self):
+		return np.sum(self.params) + np.sum(self.corr_params)
+		
+	def unc(self):
+		return np.sqrt(self.var())
+		
+	def stats(self):
+		return (self.params[1] + self.params[9]) / self.var()
+		
+	def positioning(self):
+		return (np.sum(self.params[20:28]) + self.corr_params[6] + self.corr_params[7]) / self.var()
+	
+	def other(self):
+		return 1 - (self.stats() + self.positioning())
+
+def lookout(filepath, sheet):
+	forbidden_sheets = ('Analysis', 'Models')
+	wb = openpyxl.load_workbook(filename = filepath, data_only=True)
+	fsheet = [wsheet for wsheet in wb.sheetnames if sheet in wsheet and wsheet not in forbidden_sheets]
+	return [DataBudget(wb, foglio, filepath) for foglio in fsheet]
+
+def _get_string(sname):
+	n = sname.find('_')
+	if n > -1:
+		return sname[n+1:]
+	else:
+		return sname
+
+def _get_sheets(file):
+    forbidden_sheets = ('Analysis', 'Models')
+    wb = openpyxl.load_workbook(filename = file, data_only=True)
+    return [_get_string(sname) for sname in wb.sheetnames if sname not in forbidden_sheets and wb[sname].cell(row=5, column=10).value is not None and sname[0] == '#']
+
+def get_sheets(filename):
+    sheets = [_get_sheets(file) for file in filename]
+    return sorted(set([sname for slist in sheets for sname in slist]))
 
 def coi_correction_sda(emission, calibration, pos, R=0.2):
 

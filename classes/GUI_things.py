@@ -92,6 +92,90 @@ class Entry(tkinter.Entry):
             M.geometry(f'+{self.winfo_rootx()+self.hint_xoffset}+{self.winfo_rooty()+self.winfo_height()}')
             self.bind('<Leave>', lambda e='<Leave>' : M.destroy())
 
+
+class ColorButton(tkinter.Frame):
+    def __init__(self, master, default_color='#FFFFFF', mode='persistent', state='active', external_variable=None):
+        tkinter.Frame.__init__(self, master)
+        self.color = default_color
+        self.mode = mode
+        fimage = tkinter.PhotoImage(data=m_void)
+        self.button = Button(self, image=fimage, background=self.color, command=lambda : self.open_ColorPalette(external_variable))
+        self.button.pack(anchor=tkinter.NW)
+        self.button.image = fimage
+        self.secondary_open = False
+        self.state = state
+        if state != 'active':
+            self.button.configure(state='disabled')
+
+    def cstate(self):
+        if self.state != 'active':
+            self.active()
+        else:
+            self.deactive()
+    
+    def active(self):
+        self.state = 'active'
+        self.button.configure(state='active')
+
+    def deactive(self):
+        self.state = 'disabled'
+        self.button.configure(state='disabled')
+
+    def open_ColorPalette(self, external_variable):
+        if self.secondary_open == False:
+            TP = tkinter.Toplevel(self)
+            TP.title('Color palette')
+            TP.protocol("WM_DELETE_WINDOW", lambda: self.on_closing(TP))
+            TP.resizable(False, False)
+            self.secondary_open = True
+            
+            color_matrix = [['#000000', '#3B3131', '#413839', '#4C4646', '#52595D', '#666362', '#726E6D', '#797979', '#848482', '#C0C0C0', '#CECECE', '#E5E4E2', '#838996', '#6D7B8D'], ['#646D7E', '#728FCE', '#36454F', '#123456', '#000080', '#15317E', '#0020C2', '#2916F5', '#1F45FC', '#1974D2', '#2B65EC', '#1589FF', '#4682B4', '#3090C7'], ['#95B9C7', '#56A5EC', '#3BB9FF', '#82CAFF', '#A0CFEC', '#ADDFFF', '#BDEDFF', '#ADD8E6', '#D5D6EA', '#EBF4FA', '#F0FFFF', '#9AFEFF', '#00FFFF', '#4EE2EC'], ['#AFEEEE', '#77BFC7', '#7BCCB5', '#7FFFD4', '#48D1CC', '#43C6DB', '#20B2AA', '#3B9C9C', '#045F5F', '#2C3539', '#5E7D7E', '#438D80', '#2E8B57', '#34A56F'], ['#3CB371', '#617C58', '#808000', '#667C26', '#347235', '#008000', '#254117', '#6AA121', '#12AD2B', '#6CBB3C', '#32CD32', '#54C571', '#89C35C', '#B0BF1A'], ['#A1C935', '#7FE817', '#16F529', '#00FF7F', '#00FF00', '#7FFF00', '#B1FB17', '#DAEE01', '#BCE954', '#6AFB92', '#B5EAAA', '#DBF9DB', '#FFFACD', '#FAFAD2'], ['#FFF8DC', '#FAEBD7', '#FFE4C4', '#FFE5B4', '#FFDEAD', '#F0E2B6', '#ECE5B6', '#EDDA74', '#FFF380', '#FFFF00', '#FFDB58', '#FFD801', '#EAC117', '#FBB917'], ['#FFA62F', '#F4A460', '#E6BF83', '#C8AD7F', '#C8B560', '#BAB86C', '#D4AF37', '#DAA520', '#B8860B', '#CD7F32', '#966F33', '#8E7618', '#AF9B60', '#483C32'], ['#3D3635', '#49413F', '#704214', '#7F5217', '#8B4513', '#7E3517', '#C04000', '#B5651D', '#C47451', '#E56717', '#FF5F1F', '#FF8C00', '#E67451', '#F88158'], ['#E9967A', '#FA8072', '#E77471', '#CD5C5C', '#FF4500', '#FF2400', '#F62817', '#DC381F', '#B22222', '#A70D2A', '#990012', '#8C001A', '#551606', '#2B1B17'], ['#7D0541', '#7E354D', '#7F5A58', '#BC8F8F', '#C48793', '#ECC5C0', '#EDC9AF', '#FFE6E8', '#FFCCCB', '#FFC0CB', '#FAAFBA', '#E7A1B0', '#F778A1', '#D16587'], ['#E75480', '#FC6C85', '#FF1493', '#E45E9D', '#E30B5D', '#C21E56', '#CA226B', '#B3446C', '#DF73D4', '#FF00FF', '#C45AEC', '#B048B5', '#7E587E', '#5E5A80'], ['#6960EC', '#7575CF', '#5453A6', '#571B7E', '#461B7E', '#663399', '#800080', '#9400D3', '#B041FF', '#7A5DC7', '#8E35EF', '#9370DB', '#9E7BFF', '#E0B0FF'], ['#C38EC7', '#E6A9EC', '#C6AEC7', '#E9CFEC', '#E9E4D4', '#F8F0E3', '#FFF9E3', '#FFF5EE', '#FFFFF0', '#FBFBF9', '#FFFFFF']]
+
+            naming_matrix = {'#000000': 'Black (W3C)', '#3B3131': 'Oil', '#413839': 'Black Cat', '#4C4646': 'Black Cow', '#52595D': 'Iron Gray', '#666362': 'Ash Gray', '#726E6D': 'Smokey Gray', '#797979': 'Platinum Gray', '#848482': 'Battleship Gray', '#C0C0C0': 'Silver (W3C)', '#CECECE': 'Platinum Silver', '#E5E4E2': 'Platinum', '#838996': 'Roman Silver', '#6D7B8D': 'Rat Gray', '#646D7E': 'Mist Blue', '#728FCE': 'Light Purple Blue', '#36454F': 'Charcoal Blue', '#123456': 'Deep Sea Blue', '#000080': 'Navy (W3C)', '#15317E': 'Lapis Blue', '#0020C2': 'Cobalt Blue', '#2916F5': 'Canary Blue', '#1F45FC': 'Blue Orchid', '#1974D2': 'Bright Navy Blue', '#2B65EC': 'Ocean Blue', '#1589FF': 'Neon Blue', '#4682B4': 'SteelBlue (W3C)', '#3090C7': 'Blue Ivy', '#95B9C7': 'Baby Blue', '#56A5EC': 'Iceberg', '#3BB9FF': 'Midday Blue', '#82CAFF': 'Day Sky Blue', '#A0CFEC': 'Jeans Blue', '#ADDFFF': 'Light Day Blue', '#BDEDFF': 'Robin Egg Blue', '#ADD8E6': 'LightBlue (W3C)', '#D5D6EA': 'Pastel Light Blue', '#EBF4FA': 'Water', '#F0FFFF': 'Azure (W3C)', '#9AFEFF': 'Electric Blue', '#00FFFF': 'Aqua or Cyan (W3C)', '#4EE2EC': 'Blue Diamond', '#AFEEEE': 'PaleTurquoise (W3C)', '#77BFC7': 'Blue Hosta', '#7BCCB5': 'Blue Green', '#7FFFD4': 'Aquamarine (W3C)', '#48D1CC': 'MediumTurquoise (W3C)', '#43C6DB': 'Blue Turquoise', '#20B2AA': 'LightSeaGreen (W3C)', '#3B9C9C': 'Deep Sea', '#045F5F': 'Medium Teal', '#2C3539': 'Gunmetal', '#5E7D7E': 'Grayish Turquoise', '#438D80': 'Sea Turtle Green', '#2E8B57': 'SeaGreen (W3C)', '#34A56F': 'Earth Green', '#3CB371': 'MediumSeaGreen (W3C)', '#617C58': 'Hazel Green', '#808000': 'Olive (W3C)', '#667C26': 'Fern Green', '#347235': 'Medium Forest Green', '#008000': 'Green (W3C)', '#254117': 'Dark Forest Green', '#6AA121': 'Green Onion', '#12AD2B': 'Parrot Green', '#6CBB3C': 'Green Snake', '#32CD32': 'LimeGreen (W3C)', '#54C571': 'Zombie Green', '#89C35C': 'Green Peas', '#B0BF1A': 'Acid Green', '#A1C935': 'Salad Green', '#7FE817': 'Hummingbird Green', '#16F529': 'Neon Green', '#00FF7F': 'SpringGreen (W3C)', '#00FF00': 'Lime (W3C)', '#7FFF00': 'Chartreuse (W3C)', '#B1FB17': 'Dull Green Yellow', '#DAEE01': 'Neon Yellow Green', '#BCE954': 'Slime Green', '#6AFB92': 'Dragon Green', '#B5EAAA': 'Green Thumb', '#DBF9DB': 'Light Rose Green', '#FFFACD': 'LemonChiffon (W3C)', '#FAFAD2': 'LightGoldenRodYellow (W3C)', '#FFF8DC': 'Cornsilk (W3C)', '#FAEBD7': 'AntiqueWhite (W3C)', '#FFE4C4': 'Bisque (W3C)', '#FFE5B4': 'Peach', '#FFDEAD': 'NavajoWhite (W3C)', '#F0E2B6': 'Dark Blonde', '#ECE5B6': 'Tan Brown', '#EDDA74': 'Cardboard Brown', '#FFF380': 'Corn Yellow', '#FFFF00': 'Yellow (W3C)', '#FFDB58': 'Mustard Yellow', '#FFD801': 'Rubber Ducky Yellow', '#EAC117': 'Golden Brown', '#FBB917': 'Saffron', '#FFA62F': 'Cantaloupe', '#F4A460': 'SandyBrown (W3C)', '#E6BF83': 'Deer Brown', '#C8AD7F': 'Light French Beige', '#C8B560': 'Fall Leaf Brown', '#BAB86C': 'Olive Green', '#D4AF37': 'Metallic Gold', '#DAA520': 'GoldenRod (W3C)', '#B8860B': 'DarkGoldenRod (W3C)', '#CD7F32': 'Bronze', '#966F33': 'Wood', '#8E7618': 'Hazel', '#AF9B60': 'Bullet Shell', '#483C32': 'Taupe', '#3D3635': 'Gray Brown', '#49413F': 'Western Charcoal', '#704214': 'Sepia Brown', '#7F5217': 'Red Dirt', '#8B4513': 'SaddleBrown (W3C)', '#7E3517': 'Blood Red', '#C04000': 'Mahogany', '#B5651D': 'Light Brown', '#C47451': 'Orange Salmon', '#E56717': 'Papaya Orange', '#FF5F1F': 'Bright Orange', '#FF8C00': 'DarkOrange (W3C)', '#E67451': 'Sunrise Orange', '#F88158': 'Basket Ball Orange', '#E9967A': 'DarkSalmon (W3C)', '#FA8072': 'Salmon (W3C)', '#E77471': 'Pink Coral', '#CD5C5C': 'IndianRed (W3C)', '#FF4500': 'OrangeRed (W3C)', '#FF2400': 'Scarlet', '#F62817': 'Fire Engine Red', '#DC381F': 'Grapefruit', '#B22222': 'FireBrick (W3C)', '#A70D2A': 'Carbon Red', '#990012': 'Red Wine or Wine Red', '#8C001A': 'Burgundy', '#551606': 'Blood Night', '#2B1B17': 'Midnight', '#7D0541': 'Plum Pie', '#7E354D': 'Velvet Maroon', '#7F5A58': 'Puce', '#BC8F8F': 'RosyBrown (W3C)', '#C48793': 'Lipstick Pink', '#ECC5C0': 'Rose Gold', '#EDC9AF': 'Desert Sand', '#FFE6E8': 'Blush', '#FFCCCB': 'Light Red', '#FFC0CB': 'Pink (W3C)', '#FAAFBA': 'Baby Pink', '#E7A1B0': 'Pink Rose', '#F778A1': 'Carnation Pink', '#D16587': 'Purple Pink', '#E75480': 'Dark Pink', '#FC6C85': 'Watermelon Pink', '#FF1493': 'DeepPink (W3C)', '#E45E9D': 'Pink Cupcake', '#E30B5D': 'Raspberry', '#C21E56': 'Rose Red', '#CA226B': 'Pink Violet', '#B3446C': 'Raspberry Purple', '#DF73D4': 'Deep Mauve', '#FF00FF': 'Fuchsia or Magenta (W3C)', '#C45AEC': 'Tyrian Purple', '#B048B5': 'Orchid Purple', '#7E587E': 'Viola Purple', '#5E5A80': 'Grape', '#6960EC': 'Blue Lotus', '#7575CF': 'Periwinkle Purple', '#5453A6': 'Deep Periwinkle', '#571B7E': 'Purple Iris', '#461B7E': 'Purple Monster', '#663399': 'RebeccaPurple (W3C)', '#800080': 'Purple (W3C)', '#9400D3': 'DarkViolet (W3C)', '#B041FF': 'Purple Daffodil', '#7A5DC7': 'Purple Sage Bush', '#8E35EF': 'Purple Plum', '#9370DB': 'MediumPurple (W3C)', '#9E7BFF': 'Purple Mimosa', '#E0B0FF': 'Mauve', '#C38EC7': 'Purple Dragon', '#E6A9EC': 'Blush Pink', '#C6AEC7': 'Wisteria Purple', '#E9CFEC': 'Periwinkle Pink', '#E9E4D4': 'Ash White', '#F8F0E3': 'Off White', '#FFF9E3': 'Egg Shell', '#FFF5EE': 'SeaShell (W3C)', '#FFFFF0': 'Ivory (W3C)', '#FBFBF9': 'Cotton', '#FFFFFF': 'White (W3C)'}
+
+            if len(color_matrix[0]) < 16:
+                data = m_void
+            else:
+                data = s_void
+            
+            fimage = tkinter.PhotoImage(data=data)
+            nameline = tkinter.Label(TP, text='', anchor=tkinter.W)
+            CP = tkinter.Frame(TP)
+            for i,line in enumerate(color_matrix):
+                for j, name in enumerate(line):
+                    BGKL = tkinter.Button(CP, image=fimage, text='', background=name, command=lambda color=name : self.trigger(color, TP, external_variable))
+                    BGKL.grid(row=i, column=j)
+                    BGKL.image = fimage
+                    BGKL.bind('<Enter>', lambda e='<Enter>', color=name : self.hover(color, naming_matrix, nameline))
+                    BGKL.bind('<Leave>', lambda e='<Leave>' : self.leavemealone(nameline))
+
+            CP.pack(anchor=tkinter.NW)
+            nameline.pack(anchor=tkinter.NW)
+
+    def trigger(self, color, TP, external_variable):
+        self.color = color
+        if external_variable is not None:
+            external_variable.set(color)
+        self.button.configure(background=self.color)
+        if self.mode == 'click':
+            TP.destroy()
+            self.secondary_open = False
+
+    def hover(self, color, naming_matrix, nameline):
+        naming_matrix.get(color, color)
+        nameline.configure(text=naming_matrix.get(color, color))
+
+    def leavemealone(self, nameline):
+        nameline.configure(text='')
+    
+    def on_closing(self, TP):
+        TP.destroy()
+        self.secondary_open = False
+
+    def get(self):
+        return self.color
+
+
 class Spinbox(tkinter.Spinbox):
     """Modified version of a tkinter Spinbox allowing to popup an hint while the widget is hovered with mouse."""
     def __init__(self, master, hint='', hint_xoffset=0, hint_destination=None, **kw):
@@ -265,7 +349,7 @@ class FSlider(tkinter.Frame):
         self.Label = Label(self, text=self.text, width=self.width, anchor=self.anchor, hint=hint, hint_xoffset=hint_xoffset, hint_destination=hint_destination)
         self.Label.pack(side=tkinter.LEFT)
         self.Scale = tkinter.Scale(self, from_=self.from_, to=self.to, width=self.width_scale, orient=tkinter.HORIZONTAL, length=self.lenght, resolution=self.resolution, showvalue=False, variable=self.variable)
-        self.Scale.pack(side=tkinter.RIGHT)
+        self.Scale.pack(side=tkinter.RIGHT, fill=tkinter.X, expand=True)
 
         if self.from_ <= default <= self.to:
             self.variable.set(default)
@@ -831,3 +915,15 @@ grid = 'iVBORw0KGgoAAAANSUhEUgAAACMAAAAjCAYAAAAe2bNZAAAABHNCSVQICAgIfAhkiAAAAAlw
 newname = 'iVBORw0KGgoAAAANSUhEUgAAACMAAAAjCAYAAAAe2bNZAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANTSURBVFiF7dZRaFZ1GMfxzzmvbqbLbHOzuVxzmQpWmiOmLrEZlmlp4rslGsukq6ibIKSLwIvQiyyw0Mobw6xgbSDD0oSKEKKLCEocCy9SzNS1rFVG9rZzujj/5dsc1YXQRe8XXs7znnOe5/zO///wew4lSpQoccWoxi3/tQiYir14c+SFXDhOwEpUoRFr8AvOYSxWYynG4GvMwQpcxHpMws94WPbWx0PdJtyNSpwI535CPfrxcbGYMV3MLnBnD+sTxi6gZ4DJfbz+IDu72TSfg3V8u5+eNrYPUnGQzfN5rYb+99jWxN5Kzr/P1ja2fcrtvzF+ER+9w+Z5HJqWCS47wsp6jtaztJ0PhsXECQ05bqun9g7662io5ObZxGhayZdlNJ9hTS25iMYcNzYwMIs0prGa72YyGFNVxWBKVT/LJ1M4zsJGvppIOcrgAlNqOJdmzxiVXlSE+Fl0YAF6MAWL8Ua4nscLIW7D8yFux3Zcg8Gi2mVFcQX6RhMwrCyPG1CLmeF/JW7FVViIB0LRRdiEcUHkI7gaNSGemL28g3gq5N0VnnNdOJfDrJFionCcHuIfZE1agQJOYYaskS/Imvu8rGFhAJNHiU8gQQN+DDlwbfgJ9c6NtkIlSvxbon++5crTxUMRU9PMiU/mee5vE17NxsBfeDczrsvYQrwl2ERK1HlpzFxWq5s1XcGXOqnoItmT2cSllUmJutkVMTfhlZjpKQvzLO+mBfeknEpZl3IfZsTsxz6ZwT2GzajDkwkzyykv8EzK5xGrIp5GTcLENg6HFXpiLc0U2XFEimMph9qyqbo7uuQbVRE7qtgTUVlgXDtHEY9naz5z4/LxHMjzInLVJIXMjatjJkT8mtK8lk+CkDl4fIh1wxrGjFjxeSmdQdzchM/C8t+UUHees5i0ge87MzcdWMHFbmpTzhTFp1v5vYtVY2lazTfYXbRVrSkdCfcr2tKRg6ol5RgM0RLRO4cVCa15XpY5c29IbMEXw3lCXsriKNyDkwWmhf5Y0kllFzvQip05luV4tGh3Mt7m3pglEYcjTg7RETFwkbfKsr3uw5GIjSkfpsyLiCL2JWxALmZvwoaYeIhduWxsbEw4m3Ig5voo+1b6kyFeaue0EiVKlPi/8Qe5i+JZbRuoyAAAAABJRU5ErkJggg=='
 
 ticks = 'iVBORw0KGgoAAAANSUhEUgAAACMAAAAjCAYAAAAe2bNZAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANjSURBVFiF7dZbaF1FFAbg7yQxNsYoVRNrW0pFNERbBS/RFkUJIkJFfFC8gPegILVWCj4oVLB4g6IFUQT1Qan4ICr4YEUFW4JakKAI0lZ8ELWtaAVFQio5MT6sfZLJnLOTTV5KIT9s2Gvtf8+sWbPWP8MijgPUpt+6eneY0n8MIjhg/I/N0DHt/K+2S23qu1nE+thG7V1vqLWNzztkfWyLju7t804+eXQQXdqX7CnmPVg17g9wagVeOz6tOObteLBskLkwgX2YrDDJv/i+Am8SvxXPgrACJ7fwd6Mz8y1vwTsB54ga7cEGrF5oMM/hqsw3jEP4BZsS/xcZrxOj2IvX8CXewgEMpsS27MeHxN7nz60tAtyIfpyHi4uASTs0cDVGcAX+wfu4C/fg/pTYkf3Yh934OPNvwlRi13C0GBzuxQ680CLobpFB+NFMrfyE3rmCGRErHc38e/BXYk9hHCvxa2E/gu04O/t3H64v3l9J/GuK4BaEPP1naF3UayuOt1QmG3nNNPBYZt8iKzYcEVm4LvG1476SMe/GaYndMwd3FrZiS/F+Mz7U3MLQhU9woVjYm6IJWuESfIQlYnv3YqBKMDW8LopyVzFpGXpF0e9MFlCGDXgXX+Gi/GOuwLdhvVjF73igmGRAFOpYwTsddxa8AaG+g0JDBpCecZfhhoJ7Ci4XRd2GE4VOobmbUkxgW8m3vJh/KJ4qeKcibxrLzC7u3E6DOmsOO0WPyExq91QJ5rPMfgrrWvAuNaO8DZSd3s+LrWrgfFGT0yhr7YnMPoQzW/D6zKhr+m++jUShp9zD+ZhlwdRxk2jnfnGWfN2CN4o7RNF2ikKtmX10NDAiJKMhdk8KZZ8Xy0UX7Rdte+0c3CF8XnDfFhrSCm14HN/g2yKwsmQce+R7u1Okb5vsRMXDYvXEYfoEnsVLGe+IuFo2MCy2rUOoeYr38GpZMKvEEb9MswYdFOJGiFWfEMYVGa+OnxO7cR7VNN+n/8af5sHTmT2MC1rw1grVTvFiyZibzc72KjyaEvLVd4rLUL+o+gZnSPN1sltkcHXC7RG3vhxLca44RuqFb70sU3kw1+AZcTVoiFddtPX+jLsVNxZBNWphHC9nvFox1kpcaUbDDssyU4ahKiQhWmsqctfhpIrcRSzi+MP/5oejZujkk9IAAAAASUVORK5CYII='
+
+predict = 'iVBORw0KGgoAAAANSUhEUgAAACMAAAAjCAYAAAAe2bNZAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAI8SURBVFiF7da7axVBFMfxTx4Xo4UBMRhtQmxUbNVGsBAJgoVgoWJMpf4LguIfYAqRICqoKSSobZQQUFF8dj7S+YAgiDFqNKhpzPNa7Ky7LndzV0Rs9gfD7D3nzHfOnT0zs5QqVarUv1VDjn0terAdazCLNxjCFXwvwG5FN3ahExW8xx0MBN6iakYvplHNaZ9woA7nICYWYUzjZJivpioYTg2YxyP04zJeZoDHczgnMnEvwvh+PA7c2DeUl1BfKugh1teI2YmxELOA3Rn/nmCv4h26ajA2hD8Zz3UqG7ARc8F5D0tqZRvUgY+S1ZtMtdlg/xDi8rQED0LsbEjwl84Ex486kFjd8uuhiv0FGJ2S2uxLO14H42ABCNF7ngxjJvBEUrCfLVKYGd0IY15Bo2h7x6vxtCBkDiPh+Rk24Xn4PRL8RRTP14GGxpBQUzDOFoTATOgrmb5oImlGc5zMvKggYd0fgOLdNhb68b9gjIt2IaJTtYovWF4Ask1SrIeC7UjKtrUAo1VSdwNpR1cKdL4OZJmoLqr4hhXBvlJ0TVRFdbS0DudCas4dWefNlPM0WmoAVovOoTjuaMZ/LOW7i/YajBa/H7DDtTJtw2gq6K3onuoRvYpLmEr5B0XFn1YjrqdipnARhwOnN3Bj/6hoRWuqXXIy5rUFnJXsnqwqOCe5FvLafazKSyRWA/bhtmjrxYO/4io21wMEbcE1UV3FjBncwl75ny+5ahJ9z+QuZUG1BU5TvcBSpUqVKvU/9BO15MnuE+xpHwAAAABJRU5ErkJggg=='
+
+m_void = 'iVBORw0KGgoAAAANSUhEUgAAACMAAAAjCAYAAAAe2bNZAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAAcSURBVFiF7cGBAAAAAMOg+VMf4QJVAQAAAADHABNHAAHPMYCrAAAAAElFTkSuQmCC'
+
+s_void = 'iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAAZSURBVEiJ7cEBDQAAAMKg909tDwcUAAA3BgndAAF85o4iAAAAAElFTkSuQmCC'
+
+newid = 'iVBORw0KGgoAAAANSUhEUgAAACMAAAAjCAYAAAAe2bNZAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAIrSURBVFiF7dVbiE1xFMfxz/+ciTHuJoPcLxERhRe5jTQ0IYxcRimFKJ6VB29S3kmiGCZ1himKB4UHHl3KpWS8SMrDzLgWw7G3h31kmmYMzvEg+1u73frt1Vq/vVt7/UlJSfkPmduNtg27O8V9MRsDim2W+cmzIdjRjT4S0zrFdbjTS61foqwHvQJLcaYQD8JmdGAU7nXKvYxneFdSMzkGB2ryZBrZM4yWhcy/yt6FnK3k7QW2LCM/hv0SFxOf8amWQzEtGzldEjMRYzMsz2I64ybw+hVbZ/BqfDITA6ooH0OUIRMRtTJ6MC8j3gXa/9RIb7SgHKewvqCNw60ueedQXYqGPc1MPaok83EZOwv6CmTRD18kc7USN3C7oP0xoQd9UuH+unBVFXI/oRIvEEu+1Hee42sxZlJS4BIjfjW3p7/pt7nA1QrW1SZb+rt2MM8azMsxI1AX+BKY3cG+elr/ipnArs5GblLWxv2Y0Tn6ZLhYlxiKL3K+D5twtKRmYkIzJ+Kk1vYmNgcWt/EAawPNw4naaQjEDfSPqA4c6VqraDOFN32CuJmpEXvrWBSIm6jBvWryOJwjm6EBBzZwv2utoo99iJkTcTdiFa6FZCEKzKrgITQyNMvxmJMRuUsMLLmZONnMC/I8jn9sazmW4HMtHU1sLedYRGOWjixH27s5OrLFmpnF6sD7Mt5UcuUjMzcyHx8CHzbxFKsCbwNTMBnX63lUbO+UlJSUf5pv3IiPmIyijvQAAAAASUVORK5CYII='
+
+flecheconvergence = 'iVBORw0KGgoAAAANSUhEUgAAACMAAAAjCAYAAAAe2bNZAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAQ/SURBVFiF7ddbiJVVFAfw3xlHHS/TODWjaZYkWhBpWnQ3KoyCiBIik+qll+4vQUFBREEUdCF6KbpQdCFUCkqwICERyoogK+uh6OIlsnJqTO3MxDgzPaz9cfY58505oxD00IKP852119rrv/97rbX3x5HJGlyZ3ufgnvQr6dccyaRtRwjmX5H/wTST9ib6aejAaKYbxsEGXSupYCompf+F7zD+ngiYKclwJmY1BO/CzxME0iaSekqD/i/8gemotgJTQQ9+T4DmNIzPwjsYagJiU5r3pORPbUH9CcjsBKpOmm3TZCzEj2nCBdnYMQnQJ018h7BMsJjLHuzComQzBkylZLIOwUxPArUNZ+LkzGZUMPceDiXAB9PiVibfwg524mMsT7q+9BzIAzdjppAuXIwtKeBpWZAedOJN7BeJerX6bR3FN4LFi1K8vgag44IZTr8Vtfy5AhvRjdMbAHVhLa7D/IZAX2IzrhKM96WxUcFoSzBDGGjQHYcb8DqOwjlZwB7B2KTMfhQf4m1cn3z6Mp8BDE4EDJEPnWp7XxFJfCueEWxcoJ7q/H0T1uN2HI296ivqt7Kg7ZofalvwK3oz3SLchSfEaleWANqAV3F/AtKXjf8iWLm2GZhq2YDY0+2ChZyhpXggPTNxeeazDs/jsbSIHMgOfJH0pTHLSrtR2lLAs9VKvgff4k48hVV4GQ/hacxTK98+bMW7Whwl7cZ22EbpTxN1YUWmPx/P4eYUbIPIkwKIFHxb8p8sqnFcMDe2ALNOdOL1Yot61Ri9BPfhXjyaxnMgfyaQo6LsV7cC81ILMP0p+CpjW/zneAFvidvefCxR244uXCP60E+tYk0SZ8R4zwguw1nipC2eHSJnnhVn0aW4TWxTkaTVZDtN5NjB8WJV1O6yjfKRoHwFzlBL3F5R8o/gSVHuxbbtwS24AyeoT+LPRCPsFU2zlJnlIrkan90p0OKMjRlJ/zgexLEZAwNpvnPxMOaKxlmMtyfQg2neMTGblXZFXCEWZ2z0iIR8BXeL7ag0+BRSMLdaXDn2Zgx9JwqilJkymZ1WPSM909OE63CT6L45I1+JU3sg6dpwCl5MC5mS2Y8oP/9KwXSINl6AmC7Oqo1ppTOyoFW8j9cEa3MzPcHsG4LVoliqGZiRVmCmqa+aA/hAdOGOjI2qaHabk9/upO9uAHS8WtOsZGODGq4RZWCmZkCqopecl2xzRrbh02S3DPtEuQ+IM6uwGxVbvjXpRzKGirsTxr/p7U+rXZpWMaiWpDvxfXrvFKf3rhRgewJ0YhovfJakhc1rFrDZ18GA+CRZoNaUCulLABbihxL/hSKBv1Y79wpAC5JP50TBHEoBuwU7+WQHRBe9ULBQBuZUsXVrk02n+rLvFpU5pq2UgamK/OjPdBWx18Ml9uPJPsFq0fAKmewwrp2HG3Q8GdL8g69O/lMf/v+DaSb/AK/eKMNGtrLFAAAAAElFTkSuQmCC'
+
+xcellfleche = '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'
